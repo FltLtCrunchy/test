@@ -1,0 +1,249 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <dht11.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
+
+const int enA = 9;      // Motor A enable pin (connected to Arduino digital pin 9)
+const int in1 = 8;      // Motor A input 1 (connected to Arduino digital pin 8)
+const int in2 = 7;      // Motor A input 2 (connected to Arduino digital pin 7)
+const int relayPin = 6; // Digital pin for controlling the relay
+const int encoderPinA = 11;
+const int encoderPinB = 12;
+const int buttonPin = 13;
+const int switchPin1 = 53; // Switch pin
+const int switchPin2 = 52;
+const int minValue = 0;
+const int maxValue = 100;
+const int DHT11PIN = 2;   // Define the pin for the first DHT11 sensor
+const int DHT112PIN = 3;  // Define the pin for the second DHT11 sensor
+int switchState = 1; // Initialize the switch state to 1 (or any initial state)
+
+
+dht11 DHT11; 
+dht11 DHT112;
+int SoilVar = 0;
+int TempVar = 0;
+int lastEncoderAState = 0;
+int encoderAState = 0;
+int buttonState = HIGH;
+int lastButtonState = HIGH;
+int switchState1 = HIGH; // Switch state
+int switchState2 = HIGH;
+int lastSwitchState = HIGH; // Last switch state
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50; // Adjust this value as needed
+int PWM = 0;      // Variable to store the motor PWM value
+int encoderPos = 0;
+bool relayOn = false; // Relay state
+
+void setup() {
+  Serial.begin(9600);
+  lcd.init(); // Initialize the LCD
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("RH: ---%");
+  lcd.setCursor(0, 1);
+  lcd.print("Temp: --- C");
+  pinMode(enA, OUTPUT);
+    pinMode(in1, OUTPUT);
+    pinMode(in2, OUTPUT);
+    pinMode(relayPin, OUTPUT);
+  pinMode(encoderPinA, INPUT_PULLUP);
+    pinMode(encoderPinB, INPUT_PULLUP);
+    pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(switchPin1, INPUT_PULLUP); // Set the switch pin as input
+    pinMode(switchPin2, INPUT_PULLUP); // Set the switch pin as input
+}
+
+void demoOne(int motorSpeed) {
+  analogWrite(enA, motorSpeed);
+
+  if (motorSpeed < 30) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);
+  } else {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+  }
+}
+
+void toggleRelay() {
+  relayOn = !relayOn; // Toggle the relay state
+  digitalWrite(relayPin, relayOn ? HIGH : LOW);
+}
+
+void dht11() {
+  Serial.println(); 
+
+  int chk = DHT11.read(DHT11PIN); // Use the defined DHT11PIN
+  int chk2 = DHT112.read(DHT112PIN); // Use the defined DHT112PIN
+
+  Serial.print("Humidity 1 (%):  "); 
+  Serial.println((float)DHT11.humidity, 2); 
+  Serial.print("Temperature 1  (C): "); 
+  Serial.println((float)DHT11.temperature, 2); 
+
+  Serial.print("Humidity 2 (%):  "); 
+  Serial.println((float)DHT112.humidity, 2); 
+  Serial.print("Temperature 2  (C): "); 
+  Serial.println((float)DHT112.temperature, 2); 
+
+  delay(1000); 
+}
+void moistureSense(){
+  
+  
+}
+void loop() {
+  // Check the state of the switch attached to pin 53
+    dht11();
+    int reading = digitalRead(buttonPin);
+
+      // Map encoder position to motor speed from 0-100 to 0-255
+
+
+    // Calculate the PWM percentage from 0-100
+    float percentage = map(encoderPos, minValue, maxValue, 0, 100);
+    percentage = max(percentage, 0);
+  
+  
+switchState1 = digitalRead(switchPin1);
+switchState2 = digitalRead(switchPin2);
+
+// Check the center-off position
+if (switchState1 == LOW && switchState2 == LOW) {
+    switchState = 0; // Center-off position
+} else if (switchState1 == LOW) {
+    switchState = 1; // Switch position 1
+} else if (switchState2 == LOW) {
+    switchState = 2; // Switch position 2
+} else {
+    switchState = 0; // Default to center-off if neither switch is LOW
+}
+
+switch (switchState) {
+    case 0: // Center-off
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("This is Sending");
+            lcd.setCursor(0, 1);
+            lcd.print("me Insane");
+        break;
+    case 1: // Switch position 1
+            // Run the LCD code if the switch is turned on
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("RH: ");
+    lcd.print((int)DHT11.humidity);
+    lcd.print("%");
+
+    lcd.setCursor(0, 1);
+    lcd.print("Temp: ");
+    lcd.print((int)DHT11.temperature);
+    lcd.print("C");
+
+    lcd.setCursor(8, 0);
+    lcd.print("Fan: ");
+    lcd.print((float)percentage);
+    lcd.print("%");
+
+      if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+    }}
+    if (buttonState = LOW) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("RH: ");
+      lcd.print((int)DHT11.humidity);
+      lcd.print("%");
+
+      //lcd.setCursor(0, 1);
+      //lcd.print("Temp: ");
+      //lcd.print((int)DHT11.temperature);
+      //lcd.print("C");
+
+      lcd.setCursor(8, 0);
+      lcd.print("Fan: ");
+      lcd.print(percentage);
+      lcd.print("%");
+
+      lcd.setCursor(0, 1);
+      lcd.print("Set:");
+      lcd.print(TempVar);
+
+      int TempVar = map(encoderPos, minValue, maxValue, 0, 100);
+      TempVar = max(TempVar, 0);
+
+      
+        break;
+    case 2: // Switch position 2// Switch position 2
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Switch position 2");
+    lcd.setCursor(0, 1);
+    lcd.print("Custom actions here");
+    break;
+
+        break;
+    default:;
+        // Handle unexpected switch states
+}}
+
+
+  
+  
+
+
+  
+  // Read the button state with debouncing
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == LOW) {
+        Serial.println("Button pressed");
+        toggleRelay();
+        // Add your code to respond to a button press here
+      }
+    }
+  }
+
+  lastButtonState = reading;
+
+  // Read the encoder and map it to motor speed
+  encoderAState = digitalRead(encoderPinA);
+
+  if (encoderAState != lastEncoderAState) {
+    if (digitalRead(encoderPinB) != encoderAState) {
+      if (encoderPos < maxValue) {
+        encoderPos++;
+      }
+    } else {
+      if (encoderPos > minValue) {
+        encoderPos--;
+      }
+    }
+
+    // Map encoder position to motor speed from 0-100 to 0-255
+    int motorSpeed = map(encoderPos, minValue, maxValue, 0, 255);
+    motorSpeed = max(motorSpeed, 0);
+
+    // Calculate the PWM percentage from 0-100
+    float percentage = map(encoderPos, minValue, maxValue, 0, 100);
+    percentage = max(percentage, 0);
+
+    Serial.print("Fan Speed: ");
+    Serial.print(percentage);
+    Serial.print("%  PWM: ");
+    Serial.println(motorSpeed);
+
+    demoOne(motorSpeed);
+    lastEncoderAState = encoderAState;
+  }
+}
